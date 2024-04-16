@@ -3,7 +3,7 @@ Shader "Custom/TextureProjectionShader"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-        _ProjTex ("Projector Texture", 2D) = "black" {}
+        // _ProjTex ("Projector Texture", 2D) = "black" {}
         // _ProjMatrix ("Projection Matrix", Matrix) = {}
     }
     SubShader
@@ -32,7 +32,7 @@ Shader "Custom/TextureProjectionShader"
             };
 
             sampler2D _MainTex;
-            sampler2D _ProjTex;
+            // sampler2D _ProjTex;
             float4x4 _ProjMatrix;
 
             v2f vert (appdata v)
@@ -51,10 +51,10 @@ Shader "Custom/TextureProjectionShader"
                 projUV = 0.5 * projUV + 0.5; // Transform to 0-1 range
 
                 // Sample the projected texture
-                fixed4 projColor = tex2D(_ProjTex, projUV);
+                fixed4 projColor = tex2D(_MainTex, projUV);
 
                 // Sample the main texture
-                fixed4 col = tex2D(_MainTex, i.uv);
+                // fixed4 col = tex2D(_MainTex, i.uv);
 
                 // Simple blend of textures
                 return projColor;
