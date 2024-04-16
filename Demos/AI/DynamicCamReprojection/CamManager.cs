@@ -102,6 +102,7 @@ public class CamManager : MonoBehaviour
 
         if (closestCamera != null)
         {
+            closestCamera.aspect = 1f;
             projectionCamera.projectorCamera = closestCamera;
             projectionCamera.UpdateCam();
             string path = closestCamera.name;// $"camera_{closestCamera.transform.position.y:F1}_{Vector3.Angle(Vector3.forward, closestCamera.transform.forward):F1}.png";
