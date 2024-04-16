@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 using System.IO;
 
 public class CamManager : MonoBehaviour
@@ -10,14 +11,16 @@ public class CamManager : MonoBehaviour
     public float minRadius;
     public float maxRadius;
     public GameObject cameraPrefab;
-    // public float radius = 5f;
     public Material mat;
     public ProjectionCamera projectionCamera;
-
     public bool updateCamInUpdate = false;
+
+    private Dictionary<Vector3Int, List<Camera>> cameraGrid;
+    public float gridCellSize = 10f; // Adjust based on your scene requirements
 
     void Start()
     {
+        cameraGrid = new Dictionary<Vector3Int, List<Camera>>();
         GenerateCameras();
     }
 
@@ -27,11 +30,7 @@ public class CamManager : MonoBehaviour
         {
             RenderAndSaveImages();
         }
-        if (Input.GetKeyDown(KeyCode.L))
-        {
-            LoadTextureFromClosestCamera();
-        }
-        if (updateCamInUpdate)
+        if (Input.GetKeyDown(KeyCode.L) || updateCamInUpdate)
         {
             LoadTextureFromClosestCamera();
         }
@@ -55,8 +54,28 @@ public class CamManager : MonoBehaviour
                 GameObject camObj = Instantiate(cameraPrefab, position, rotation);
                 camObj.name = "camera_" + name.ToString("0000");
                 name++;
+                AddCameraToGrid(camObj.GetComponent<Camera>());
             }
         }
+    }
+
+    void AddCameraToGrid(Camera camera)
+    {
+        Vector3Int gridKey = PositionToGridKey(camera.transform.position);
+        if (!cameraGrid.ContainsKey(gridKey))
+        {
+            cameraGrid[gridKey] = new List<Camera>();
+        }
+        cameraGrid[gridKey].Add(camera);
+    }
+
+    Vector3Int PositionToGridKey(Vector3 position)
+    {
+        return new Vector3Int(
+            Mathf.FloorToInt(position.x / gridCellSize),
+            Mathf.FloorToInt(position.y / gridCellSize),
+            Mathf.FloorToInt(position.z / gridCellSize)
+        );
     }
 
     public void RenderAndSaveImages()
@@ -86,30 +105,42 @@ public class CamManager : MonoBehaviour
     public void LoadTextureFromClosestCamera()
     {
         Camera mainCamera = Camera.main;
-        Camera closestCamera = null;
-        float minDistance = float.MaxValue;
+        Vector3Int gridKey = PositionToGridKey(mainCamera.transform.position);
 
-        foreach (Camera cam in FindObjectsOfType<Camera>())
-        {
-            if (cam == mainCamera) continue;
-            float distance = (cam.transform.position - mainCamera.transform.position).sqrMagnitude;
-            if (distance < minDistance)
-            {
-                closestCamera = cam;
-                minDistance = distance;
-            }
-        }
-
+        Camera closestCamera = FindClosestCameraInGrid(gridKey, mainCamera.transform.position);
         if (closestCamera != null)
         {
             closestCamera.aspect = 1f;
             projectionCamera.projectorCamera = closestCamera;
             projectionCamera.UpdateCam();
-            string path = closestCamera.name;// $"camera_{closestCamera.transform.position.y:F1}_{Vector3.Angle(Vector3.forward, closestCamera.transform.forward):F1}.png";
+            string path = closestCamera.name; // Assuming texture names are based on camera names
             Texture2D texture = Resources.Load<Texture2D>(path);
-            // Assuming there's a renderer to apply this texture to
-            // Renderer renderer = GetComponent<Renderer>();
             mat.mainTexture = texture;
         }
+        else
+        {
+            Debug.Log("No close camera found in the grid cell.");
+        }
+    }
+
+    Camera FindClosestCameraInGrid(Vector3Int gridKey, Vector3 position)
+    {
+        Camera closestCamera = null;
+        float minDistance = float.MaxValue;
+
+        if (cameraGrid.TryGetValue(gridKey, out List<Camera> cameras))
+        {
+            foreach (Camera cam in cameras)
+            {
+                float distance = (cam.transform.position - position).sqrMagnitude;
+                if (distance < minDistance)
+                {
+                    closestCamera = cam;
+                    minDistance = distance;
+                }
+            }
+        }
+
+        return closestCamera;
     }
 }
